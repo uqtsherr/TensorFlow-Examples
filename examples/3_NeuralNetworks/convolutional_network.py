@@ -12,12 +12,29 @@ Project: https://github.com/aymericdamien/TensorFlow-Examples/
 """
 from __future__ import division, print_function, absolute_import
 
+
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
+
 mnist = input_data.read_data_sets("/tmp/data/", one_hot=False)
 
 import tensorflow as tf
+import h5py
+import numpy as np
+import matplotlib.pyplot as plt
 
+
+fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1.mat'
+
+
+with h5py.File(fname, 'r') as file:
+    data = file.get('data').value
+    label = file.get('label').value
+    data = np.reshape(data, (25709, 64 * 250))
+
+print("Shape of minst:", mnist.test.images)
+mnist.train.images = data
+mnist.train.labels = label
 # Training Parameters
 learning_rate = 0.001
 num_steps = 2000
@@ -117,7 +134,7 @@ model.train(input_fn, steps=num_steps)
 # Evaluate the Model
 # Define the input function for evaluating
 input_fn = tf.estimator.inputs.numpy_input_fn(
-    x={'images': mnist.test.images}, y=mnist.test.labels,
+    x={'images': mnist.train.images}, y=mnist.train.labels,
     batch_size=batch_size, shuffle=False)
 # Use the Estimator 'evaluate' method
 e = model.evaluate(input_fn)
