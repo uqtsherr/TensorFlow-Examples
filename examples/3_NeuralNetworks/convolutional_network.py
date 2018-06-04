@@ -24,17 +24,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1.mat'
+fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1_1.mat'
 
 
 with h5py.File(fname, 'r') as file:
     data = file.get('data').value
     label = file.get('label').value
-    data = np.reshape(data, (25709, 64 * 250))
 
 print("Shape of minst:", mnist.test.images)
-mnist.train.images = data
-mnist.train.labels = label
+
 # Training Parameters
 learning_rate = 0.001
 num_steps = 2000
@@ -56,7 +54,7 @@ def conv_net(x_dict, n_classes, dropout, reuse, is_training):
         # MNIST data input is a 1-D vector of 784 features (28*28 pixels)
         # Reshape to match picture format [Height x Width x Channel]
         # Tensor input become 4-D: [Batch Size, Height, Width, Channel]
-        x = tf.reshape(x, shape=[-1, 28, 28, 1])
+        x = tf.reshape(x, shape=[-1, 64, 250, 1])
 
         # Convolution Layer with 32 filters and a kernel size of 5
         conv1 = tf.layers.conv2d(x, 32, 5, activation=tf.nn.relu)
@@ -123,10 +121,10 @@ def model_fn(features, labels, mode):
 
 # Build the Estimator
 model = tf.estimator.Estimator(model_fn)
-
+tf.reshape(label, shape=[-1])
 # Define the input function for training
 input_fn = tf.estimator.inputs.numpy_input_fn(
-    x={'images': mnist.train.images}, y=mnist.train.labels,
+    x={'images': data}, y=label,
     batch_size=batch_size, num_epochs=None, shuffle=True)
 # Train the Model
 model.train(input_fn, steps=num_steps)
@@ -134,7 +132,7 @@ model.train(input_fn, steps=num_steps)
 # Evaluate the Model
 # Define the input function for evaluating
 input_fn = tf.estimator.inputs.numpy_input_fn(
-    x={'images': mnist.train.images}, y=mnist.train.labels,
+    x={'images': data}, y=label,
     batch_size=batch_size, shuffle=False)
 # Use the Estimator 'evaluate' method
 e = model.evaluate(input_fn)
