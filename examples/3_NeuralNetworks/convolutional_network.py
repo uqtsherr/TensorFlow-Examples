@@ -13,25 +13,19 @@ Project: https://github.com/aymericdamien/TensorFlow-Examples/
 from __future__ import division, print_function, absolute_import
 
 
-# Import MNIST data
-from tensorflow.examples.tutorials.mnist import input_data
-
-mnist = input_data.read_data_sets("/tmp/data/", one_hot=False)
-
 import tensorflow as tf
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1_1.mat'
+fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1_2.mat'
 
 
 with h5py.File(fname, 'r') as file:
     data = file.get('data').value
     label = file.get('label').value
 
-print("Shape of minst:", mnist.test.images)
 
 # Training Parameters
 learning_rate = 0.001
@@ -39,8 +33,8 @@ num_steps = 2000
 batch_size = 128
 
 # Network Parameters
-num_input = 784 # MNIST data input (img shape: 28*28)
-num_classes = 10 # MNIST total classes (0-9 digits)
+num_input = 250*64 # MNIST data input (img shape: 28*28)
+num_classes = 15 # MNIST total classes (0-9 digits)
 dropout = 0.25 # Dropout, probability to drop a unit
 
 
@@ -119,12 +113,14 @@ def model_fn(features, labels, mode):
 
     return estim_specs
 
+
 # Build the Estimator
 model = tf.estimator.Estimator(model_fn)
-tf.reshape(label, shape=[-1])
+labels = label.flatten()
+
 # Define the input function for training
 input_fn = tf.estimator.inputs.numpy_input_fn(
-    x={'images': data}, y=label,
+    x={'images': data}, y=labels,
     batch_size=batch_size, num_epochs=None, shuffle=True)
 # Train the Model
 model.train(input_fn, steps=num_steps)
@@ -132,7 +128,7 @@ model.train(input_fn, steps=num_steps)
 # Evaluate the Model
 # Define the input function for evaluating
 input_fn = tf.estimator.inputs.numpy_input_fn(
-    x={'images': data}, y=label,
+    x={'images': data}, y=labels,
     batch_size=batch_size, shuffle=False)
 # Use the Estimator 'evaluate' method
 e = model.evaluate(input_fn)
