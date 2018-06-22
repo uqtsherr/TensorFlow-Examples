@@ -28,8 +28,8 @@ with h5py.File(fname, 'r') as file:
 
 
 # Training Parameters
-learning_rate = 0.006
-num_steps = 80000
+learning_rate = 0.003
+num_steps = 100000
 batch_size = 128
 
 # Network Parameters
