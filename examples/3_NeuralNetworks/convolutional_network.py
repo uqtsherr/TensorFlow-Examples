@@ -19,7 +19,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1_2.mat'
+#fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1_2.mat'
+fname = 'C:\\Work\\PHD\\EEG PREPROCESS\\trainingData1_2.mat'
 
 
 with h5py.File(fname, 'r') as file:
@@ -29,8 +30,9 @@ with h5py.File(fname, 'r') as file:
 
 # Training Parameters
 learning_rate = 0.006
-num_steps = 80000
+num_steps = 5000
 batch_size = 128
+model_path = "C:\\Work\\PHD\\EEG PREPROCESS\\TensorflowModel\\model.ckpt"
 
 # Network Parameters
 num_input = 250*64 # MNIST data input (img shape: 28*28)
@@ -50,13 +52,13 @@ def conv_net(x_dict, n_classes, dropout, reuse, is_training):
         # Tensor input become 4-D: [Batch Size, Height, Width, Channel]
         x = tf.reshape(x, shape=[-1, 64, 250, 1])
 
-        # Convolution Layer with 32 filters and a kernel size of 5
-        conv1 = tf.layers.conv2d(x, 32, 5, activation=tf.nn.relu)
+        # Convolution Layer with 32 filters and a kernel size of 25,1
+        conv1 = tf.layers.conv2d(x, 32, (25, 1), activation=tf.nn.relu)
         # Max Pooling (down-sampling) with strides of 2 and kernel size of 2
         conv1 = tf.layers.max_pooling2d(conv1, 2, 2)
 
         # Convolution Layer with 64 filters and a kernel size of 3
-        conv2 = tf.layers.conv2d(conv1, 64, 3, activation=tf.nn.relu)
+        conv2 = tf.layers.conv2d(conv1, 64, (8, 1), activation=tf.nn.relu)
         # Max Pooling (down-sampling) with strides of 2 and kernel size of 2
         conv2 = tf.layers.max_pooling2d(conv2, 2, 2)
 
@@ -117,13 +119,18 @@ def model_fn(features, labels, mode):
 # Build the Estimator
 model = tf.estimator.Estimator(model_fn)
 labels = label.flatten()
+saver = tf.train.Saver()
 
 # Define the input function for training
 input_fn = tf.estimator.inputs.numpy_input_fn(
     x={'images': data}, y=labels,
     batch_size=batch_size, num_epochs=None, shuffle=True)
 # Train the Model
-model.train(input_fn, steps=num_steps)
+i = 0;
+print("Step size: 1000")
+while i < (num_steps/1000):
+    model.train(input_fn, steps=1000)
+    print("evaluated ", i*100, " examples")
 
 # Evaluate the Model
 # Define the input function for evaluating
