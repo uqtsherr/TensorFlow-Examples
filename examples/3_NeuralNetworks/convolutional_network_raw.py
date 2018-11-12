@@ -53,7 +53,7 @@ def conv_net(x, weights, biases, dropout):
     # Reshape to match picture format [Height x Width x Channel]
     # Tensor input become 4-D: [Batch Size, Height, Width, Channel]
     x = tf.reshape(x, shape=[-1, 28, 28, 1])
-
+    print(x)
     # Convolution Layer
     conv1 = conv2d(x, weights['wc1'], biases['bc1'])
     # Max Pooling (down-sampling)
@@ -120,7 +120,9 @@ with tf.Session() as sess:
     sess.run(init)
 
     for step in range(1, num_steps+1):
-        batch_x, batch_y = mnist.train.next_batch(batch_size)
+        batch_x, batch_y = mnist.next_batch(batch_size)
+        print(batch_x)
+        print(batch_y)
         # Run optimization op (backprop)
         sess.run(train_op, feed_dict={X: batch_x, Y: batch_y, keep_prob: 0.8})
         if step % display_step == 0 or step == 1:

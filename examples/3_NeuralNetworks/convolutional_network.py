@@ -131,6 +131,7 @@ print("Step size: 1000")
 while i < (num_steps/1000):
     model.train(input_fn, steps=1000)
     print("evaluated ", i*100, " examples")
+    i = i+1
 
 # Evaluate the Model
 # Define the input function for evaluating
