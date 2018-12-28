@@ -41,7 +41,7 @@ import os
 
 # Dataset Parameters - CHANGE HERE
 MODE = 'folder' # or 'file', if you choose a plain text file (see above).
-DATASET_PATH = '/path/to/dataset/' # the dataset file or root folder path.
+DATASET_PATH = 'C://Users//z230user\Pictures//Annika Iphone//103APPLE' # the dataset file or root folder path.
 
 # Image Parameters
 N_CLASSES = 2 # CHANGE HERE, total number of classes

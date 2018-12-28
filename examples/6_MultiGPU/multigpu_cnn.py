@@ -20,7 +20,7 @@ import time
 
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
-mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
+mist = input_data.read_data_sets("/tmp/data/", one_hot=True)
 
 # Training Parameters
 num_gpus = 2

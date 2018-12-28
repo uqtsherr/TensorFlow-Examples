@@ -8,7 +8,7 @@ import numpy as np
 import os.path
 
 #fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1_2.mat'
-fname = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\Toydata.mat'
+fname = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\Toydata.mat'
 
 
 
@@ -32,8 +32,8 @@ n_examples = 10000
 
 training_epochs = 100
 display_epoch = 1
-logs_path = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\tensorflow_logs\\example2\\'
-modelPath = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\BrainNet\\model3.ckpt'
+logs_path = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\tensorflow_logs\\example2\\'
+modelPath = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\model3.ckpt'
 
 data = np.transpose(data,[3,0,1,2])
 data = np.expand_dims(data, axis=4)

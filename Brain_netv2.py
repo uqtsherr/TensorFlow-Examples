@@ -8,7 +8,7 @@ import numpy as np
 import os.path
 
 #fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1_2.mat'
-fname = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\Toydata.mat'
+fname = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\trainingSetBrainForTF.mat'
 
 
 
@@ -32,21 +32,22 @@ n_examples = 10000
 
 training_epochs = 100
 display_epoch = 1
-logs_path = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\tensorflow_logs\\example2\\'
-modelPath = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\BrainNet\\model3.ckpt'
+logs_path = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\tensorflow_logs\\example2\\'
+modelPath = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\Brain_Netv2\\model.ckpt'
 
 data = np.transpose(data,[3,0,1,2])
 data = np.expand_dims(data, axis=4)
 label = np.transpose(label)
 
-print(np.shape(data))
-print(np.shape(label))
+print('data shape ', np.shape(data))
+print('label shape ', np.shape(label))
 
 # Create the neural network
 def conv_net(x_dict, n_classes, dropout, reuse, is_training):
     # Define a scope for reusing the variables
     with tf.variable_scope('ConvNet', reuse=reuse):
         # TF Estimator input is a dict, in case of multiple inputs
+        print('network layers')
         x = x_dict['InputData']
         print(np.shape(x))
         # Convolution Layer with 32 filters and a kernel size of 5
@@ -57,17 +58,17 @@ def conv_net(x_dict, n_classes, dropout, reuse, is_training):
 
         # Convolution Layer with 64 filters and a kernel size of 3
         conv2 = tf.layers.conv3d(conv1, 32, 2, activation=tf.nn.relu)
-        #conv2 = tf.layers.max_pooling3d(conv2, 2, 2)
+        conv2 = tf.layers.max_pooling3d(conv2, 2, 2)
         print(conv2.get_shape())
         # Convolution Layer with 64 filters and a kernel size of 3
         conv3 = tf.layers.conv3d(conv2, 128, 2, activation=tf.nn.relu)
         conv3 = tf.layers.max_pooling3d(conv3, 2, 2)
         print(conv3.get_shape())
         # Convolution Layer with 64 filters and a kernel size of 3
-        #conv4 = tf.layers.conv3d(conv3, 64, 2, activation=tf.nn.relu)
+        #conv4 = tf.layers.conv3d(conv3,256, 2, activation=tf.nn.relu)
         #conv4 = tf.cast(conv4, tf.float32)
         #conv4 = tf.layers.max_pooling3d(conv4, 2, 2)
-
+        #print(conv4.get_shape())
 
         # Flatten the data to a 1-D vector for the fully connected layer
         fcl = tf.reshape(conv3, [-1, np.prod(conv3.get_shape()[1:].as_list())]) #  fc1 = tf.contrib.layers.flatten(conv2) Doesnt work with a wildcard batch no. :/
@@ -137,7 +138,7 @@ input_fn = tf.estimator.inputs.numpy_input_fn(
 
 # tf Graph Input
 # mnist data image of shape 28*28=784
-x = tf.placeholder(tf.float32, [None, 19,19,19,1], name='InputData')
+x = tf.placeholder(tf.float32, [None, np.shape(data)[1], np.shape(data)[2], np.shape(data)[3], np.shape(data)[4]], name='InputData')
 # 0-9 digits recognition => 10 classes
 y = tf.placeholder(tf.float32, [None, 1], name='LabelData')
 
@@ -185,18 +186,23 @@ with tf.Session() as sess:
     if modelAvailFlag:
         saver.restore(sess, modelPath)
         print("Model restored.")
+    else:
+        print("model file not present, intialising a new model")
 
     # op to write logs to Tensorboard
     summary_writer = tf.summary.FileWriter(logs_path, graph=tf.get_default_graph())
 
 
     # Training cycle
+    print('starting training')
     for epoch in range(training_epochs):
         avg_cost = 0.
         total_batch = int(n_examples/batch_size)
+        print('new epoch')
         # Loop over all batches
         for i in range(total_batch):
-            if(i<total_batch):
+            print('batch ', i)
+            if i < total_batch:
                 batch_xs = data[i*batch_size:(i+1)*batch_size, :, :, :, :]
                 batch_ys = label[i*batch_size:(i+1)*batch_size, :]
             else:
@@ -207,7 +213,7 @@ with tf.Session() as sess:
             # Run optimization op (backprop), cost op (to get loss value)
             # and summary nodes
             _, c, summary = sess.run([apply_grads, loss, merged_summary_op], feed_dict={x: batch_xs, y: batch_ys})
-
+            print('batch trained, writing to log')
             # Write logs at every iteration
             summary_writer.add_summary(summary, epoch * total_batch + i)
             # Compute average loss
