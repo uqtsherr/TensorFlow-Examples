@@ -8,19 +8,26 @@ import numpy as np
 import os.path
 
 #fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1_2.mat'
-fname = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\trainingSetBrainForTF.mat'
+#fname = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\Toydata.mat'
+fname = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\trainingSetBrainForTF.mat'
 
 
 
 with h5py.File(fname, 'r') as file:
-    data = file.get('T1').value
+    T1 = file.get('T1').value
+    T2 = file.get('T2').value
     label = file.get('label').value
-    if(np.any(np.isnan(data))):
+    if(np.any(np.isnan(T1))):
         print("warning, data contains Nan's needs to be cleaned")
-    max = np.amax(data)
-    min = np.amin(data)
-    data = data - (max+min)/2
-    data = data*2/(max-min)
+    max = np.amax(T1)
+    min = np.amin(T1)
+    T1 = T1 - (max + min) / 2
+    T1 = T1 * 2 / (max - min)
+
+    max = np.amax(T2)
+    min = np.amin(T2)
+    T2 = T2 - (max + min) / 2
+    T2 = T2 * 2 / (max - min)
 
 # Training Parameters
 learning_rate = 0.0003
@@ -35,11 +42,14 @@ display_epoch = 1
 logs_path = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\tensorflow_logs\\example2\\'
 modelPath = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\Brain_Netv2\\model.ckpt'
 
-data = np.transpose(data,[3,0,1,2])
-data = np.expand_dims(data, axis=4)
+#reallign the input matrices
+T1 = np.transpose(T1, [3, 0, 1, 2])
+T1 = np.expand_dims(T1, axis=4)
+T2 = np.transpose(T2, [3, 0, 1, 2])
+T2 = np.expand_dims(T2, axis=4)
 label = np.transpose(label)
 
-print('data shape ', np.shape(data))
+print('T2 shape, T1 shape ', np.shape(T1), ', ', np.shape(T2))
 print('label shape ', np.shape(label))
 
 # Create the neural network
@@ -48,7 +58,7 @@ def conv_net(x_dict, n_classes, dropout, reuse, is_training):
     with tf.variable_scope('ConvNet', reuse=reuse):
         # TF Estimator input is a dict, in case of multiple inputs
         print('network layers')
-        x = x_dict['InputData']
+        x = x_dict['T1']
         print(np.shape(x))
         # Convolution Layer with 32 filters and a kernel size of 5
         conv1 = tf.layers.conv3d(x, 8, 2, activation=tf.nn.relu)
@@ -62,16 +72,15 @@ def conv_net(x_dict, n_classes, dropout, reuse, is_training):
         print(conv2.get_shape())
         # Convolution Layer with 64 filters and a kernel size of 3
         conv3 = tf.layers.conv3d(conv2, 128, 2, activation=tf.nn.relu)
-        conv3 = tf.layers.max_pooling3d(conv3, 2, 2)
+        #conv3 = tf.layers.max_pooling3d(conv3, 2, 2)
         print(conv3.get_shape())
         # Convolution Layer with 64 filters and a kernel size of 3
-        #conv4 = tf.layers.conv3d(conv3,256, 2, activation=tf.nn.relu)
-        #conv4 = tf.cast(conv4, tf.float32)
+        conv4 = tf.layers.conv3d(conv3,256, 2, activation=tf.nn.relu)
         #conv4 = tf.layers.max_pooling3d(conv4, 2, 2)
         #print(conv4.get_shape())
 
         # Flatten the data to a 1-D vector for the fully connected layer
-        fcl = tf.reshape(conv3, [-1, np.prod(conv3.get_shape()[1:].as_list())]) #  fc1 = tf.contrib.layers.flatten(conv2) Doesnt work with a wildcard batch no. :/
+        fcl = tf.reshape(conv4, [-1, np.prod(conv4.get_shape()[1:].as_list())]) #  fc1 = tf.contrib.layers.flatten(conv2) Doesnt work with a wildcard batch no. :/
         print(fcl.get_shape())
         # Output layer, class prediction
         fcl = tf.layers.dense(fcl, 15)
@@ -116,29 +125,11 @@ def model_fn(features, labels, mode):
     return estim_specs
 
 
-# Build the Estimator
-model = tf.estimator.Estimator(model_fn)
 
-# Define the input function for training
-input_fn = tf.estimator.inputs.numpy_input_fn(
-    x={'InputData': data}, y=label,
-    batch_size=batch_size, num_epochs=None, shuffle=True)
-# Train the Model
-#model.train(input_fn, steps=num_steps)
-
-# Evaluate the Model
-# Define the input function for evaluating
-input_fn = tf.estimator.inputs.numpy_input_fn(
-    x={'InputData': data}, y=label,
-    batch_size=batch_size, shuffle=False)
-# Use the Estimator 'evaluate' method
-#e = model.evaluate(input_fn)
-
-#print("Testing Accuracy:", e['accuracy'])
 
 # tf Graph Input
 # mnist data image of shape 28*28=784
-x = tf.placeholder(tf.float32, [None, np.shape(data)[1], np.shape(data)[2], np.shape(data)[3], np.shape(data)[4]], name='InputData')
+x = tf.placeholder(tf.float32, [None, np.shape(T1)[1], np.shape(T1)[2], np.shape(T1)[3], np.shape(T1)[4]], name='InputData')
 # 0-9 digits recognition => 10 classes
 y = tf.placeholder(tf.float32, [None, 1], name='LabelData')
 
@@ -147,7 +138,7 @@ y = tf.placeholder(tf.float32, [None, 1], name='LabelData')
 # Tensorboard's Graph visualization more convenient
 with tf.name_scope('Model'):
     # Model
-    dat = {'InputData': x}
+    dat = {'T1': x, 'T2': x}
     pred = conv_net(dat, num_classes, dropout, reuse=False, is_training=True)
 with tf.name_scope('Loss'):
     # Minimize error using cross entropy
@@ -203,16 +194,18 @@ with tf.Session() as sess:
         for i in range(total_batch):
             print('batch ', i)
             if i < total_batch:
-                batch_xs = data[i*batch_size:(i+1)*batch_size, :, :, :, :]
+                batch_xs_T1 = T1[i * batch_size:(i + 1) * batch_size, :, :, :, :]
+                batch_xs_T2 = T2[i * batch_size:(i + 1) * batch_size, :, :, :, :]
                 batch_ys = label[i*batch_size:(i+1)*batch_size, :]
             else:
-                batch_xs = data[i*batch_size:, :, :, :, :]
+                batch_xs_T1 = T1[i * batch_size:, :, :, :, :]
+                batch_xs_T2 = T2[i * batch_size:, :, :, :, :]
                 batch_ys = label[i*batch_size:, :]
 
 
             # Run optimization op (backprop), cost op (to get loss value)
             # and summary nodes
-            _, c, summary = sess.run([apply_grads, loss, merged_summary_op], feed_dict={x: batch_xs, y: batch_ys})
+            _, c, summary = sess.run([apply_grads, loss, merged_summary_op], feed_dict={x: batch_xs_T1, y: batch_ys})
             print('batch trained, writing to log')
             # Write logs at every iteration
             summary_writer.add_summary(summary, epoch * total_batch + i)
@@ -228,7 +221,7 @@ with tf.Session() as sess:
 
     # Test model
     # Calculate accuracy
-    print("Accuracy:", acc.eval({x: data, y: label}))
+    print("Accuracy:", acc.eval({x: T1, y: label}))
 
     print("Run the command line:\n" \
           "--> tensorboard --logdir=C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\tensorflow_logs\\example\\ " \
