@@ -8,8 +8,12 @@ import numpy as np
 import os.path
 import time
 #fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1_2.mat'
+
+fname = os.path.dirname(os.path.realpath(__file__)) + '\\Toydata.mat'
+
+print(fname)
 #fname = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\Toydata.mat'
-fname = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\trainingSetBrainForTF.mat'
+#fname = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\trainingSetBrainForTF.mat'
 
 
 
