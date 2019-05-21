@@ -8,9 +8,12 @@ import numpy as np
 import os.path
 import time
 #fname = 'S:\\UQCCR-Colditz\\Signal Processing People\\Tim\\PHD\\EEG PREPROCESS\\trainingData1_2.mat'
-fname = 'C:\Work\PHD\FORWARD MODEL\Tensorflow\\testSetBrainForTF.mat'  #tim desktop
-#fname = 'C:\Work\PHD\FORWARD MODEL\Tensorflow\\boostedTrainingSetBrainForTF.mat' #desktop + augmented data
-#fname = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\trainingSetBrainForTF.mat' #tim laptop
+
+fname = os.path.dirname(os.path.realpath(__file__)) + '\\Toydata.mat'
+
+print(fname)
+#fname = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\Toydata.mat'
+#fname = 'C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\trainingSetBrainForTF.mat'
 
 
 
@@ -33,15 +36,15 @@ with h5py.File(fname, 'r') as file:
     T2 = T2 * 2 / (max - min)
 
 # Training Parameters
-learning_rate = 0.0002
-batch_size = 3000
+learning_rate = 0.0003
+batch_size = 1000
 dropout = 0.6
 num_classes = 1
 n_examples = np.shape(T1)[3]
-training_epochs = 5000
+training_epochs = 500
 display_epoch = 1
 logs_path = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\tensorflow_logs\\example2\\'
-modelPath = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\Brain_Net_multi_MRI_vNorm_vPos\\model.ckpt'
+modelPath = 'C:\\Work\\PHD\\FORWARD MODEL\\Tensorflow\\Brain_Net_multi_MRI\\model.ckpt'
 
 #reallign the input matrices
 T1 = np.transpose(T1, [3, 0, 1, 2])
