@@ -5,6 +5,7 @@ import tensorflow as tf
 from tensorflow.contrib import rnn
 import tensorflow_hub as hub
 import h5py
+import math
 import numpy as np
 #import matplotlib.pyplot as plt
 import os.path
@@ -13,8 +14,11 @@ from os.path import isfile, join
 import time
 import edflib
 
-
+#def tensorhub variables
 classifier_url ="https://tfhub.dev/google/tf2-preview/mobilenet_v2/classification/2" #@param {type:"string"}
+IMAGE_SHAPE = (65, 65, 3)
+
+mobilenet = tf.keras.applications.MobileNetV2(input_shape=IMAGE_SHAPE, include_top=False, weights='imagenet')
 
 #foldername = 'C:\\Users\\Tim\\EEG Free NAthan'
 foldername = 'C:\\Users\\Tim\\eegNathanTest'
@@ -115,7 +119,7 @@ records, validation = getLeaveOneOut(annotations, eegdata, 0);
 
 # Training Parameters
 learning_rate = 0.001
-batch_size = 4000
+batch_size = 100
 dropout = 0.7
 
 n_recs = np.shape(records)[0]
@@ -142,29 +146,29 @@ def dense_net(x_dict, n_classes, dropout, reuse, is_training):
         Feats = x_dict['xFeats']
         Feats = tf.transpose(Feats, perm=[0,2,1])
         #channs = tf.unstack(Feats, 2)
-        stfts = tf.signal.stft(Feats,256,1,256)
+        stfts = tf.signal.stft(Feats, 128, 2, 128)
         #stfts = tf.cast(stfts, tf.complex64)
         stfts = tf.transpose(stfts, [0, 2, 3, 1])
         stfts = tf.image.per_image_standardization(stfts)
-        tmplayer = tf.layers.conv2d(tf.abs(stfts), 96, 5, activation=tf.nn.relu, data_format='channels_last')
-        print(np.shape(tmplayer))
-        tmplayer = tf.layers.conv2d(tmplayer, 256, 1, activation=tf.nn.relu)
-        tmplayer = tf.nn.dropout(tmplayer, keep_prob=dropout)
-        tmplayer = tf.layers.max_pooling2d(tmplayer, 2, 2, padding='same')
-        tmplayer = tf.layers.conv2d(tmplayer, 256, 1, activation=tf.nn.relu)
-        tmplayer = tf.layers.max_pooling2d(tmplayer, 2, 2, padding='same')
-        tmplayer = tf.layers.conv2d(tmplayer, 384, 1, activation=tf.nn.relu)
-        tmplayer = tf.nn.dropout(tmplayer, keep_prob=dropout)
-        tmplayer = tf.layers.conv2d(tmplayer, 384, 1, activation=tf.nn.relu)
-        tmplayer = tf.layers.conv2d(tmplayer, 256, 1, activation=tf.nn.relu)
-        tmplayer = tf.layers.max_pooling2d(tmplayer, 2, 2, padding='same')
-
-        tmplayer = tf.layers.conv2d(tmplayer, 256, 1, activation=tf.nn.relu)
-        print(np.shape(tmplayer))
-        tmplayer = tf.reshape(tmplayer, [-1,3*4*256])
+        channs = tf.unstack(stfts, axis=3)
+        subimg = tf.stack([channs[0], channs[1], channs[2]], axis=3)
+        t1 = mobilenet(subimg)
+        subimg = tf.stack([channs[3], channs[4], channs[5]], axis=3)
+        t2 = mobilenet(subimg)
+        subimg = tf.stack([channs[6], channs[7], channs[8]], axis=3)
+        t3 = mobilenet(subimg)
+        subimg = tf.stack([channs[9], channs[10], channs[11]], axis=3)
+        t4 = mobilenet(subimg)
+        subimg = tf.stack([channs[12], channs[13], channs[14]], axis=3)
+        t5 = mobilenet(subimg)
+        subimg = tf.stack([channs[15], channs[16], channs[17]], axis=3)
+        t6 = mobilenet(subimg)
+        subimg = tf.stack([channs[18], channs[19], channs[20]], axis=3)
+        t7 = mobilenet(subimg)
+        tmplayer = tf.concat([t1, t2, t3, t4, t5, t6, t7], axis=3)
+        tmplayer = tf.reshape(tmplayer,[-1, 3*3*1280*7])
         # Output layer, class prediction
         fcl = tf.layers.dense(tmplayer, 3072)
-        fcl = tf.layers.dense(fcl, 3072)
         fcl = tf.nn.dropout(fcl, keep_prob=dropout)
         fcl = tf.layers.dense(fcl, 3072)
         fcl = tf.layers.dense(fcl, 1000)
@@ -288,25 +292,26 @@ with tf.Session() as sess:
         # Loop over all batches
         i = 0;
         for rec in records:
-            i = i+1;
-            #print('batch ', i)
-            batch_xs = rec[0]
-            batch_ys = rec[1][:, 1]
-            batch_ys = tf.one_hot(batch_ys,2).eval()  #get one hot tensor and return to a numpy vector
-            #print('size of batch , labels', np.shape(batch_xs), np.shape(batch_ys))
+            for i in range(math.floor(np.shape(rec[0])[0]/batch_size)):
+                #print('batch ', i)
+                batch_xs = rec[0][batch_size*i:batch_size*(i+1), :, :]
+                batch_ys = rec[1][batch_size*i:batch_size*(i+1), 1]  #grab expert 1's markup labels
+                batch_ys = tf.one_hot(batch_ys,2).eval()  #get one hot tensor and return to a numpy vector
+                #print('size of batch , labels', np.shape(batch_xs), np.shape(batch_ys))
 
 
 
-            # Run optimization op (backprop), cost op (to get loss value)
-            # and summary nodes
-            _, c, summary = sess.run([apply_grads, loss, merged_summary_op], feed_dict={xFeats: batch_xs, y: batch_ys})
-            #print('batch trained in ', time.time()-tlast, ' seconds, writing to log')
-            tlast = time.time()
-            # Write logs at every iteration
-            summary_writer.add_summary(summary, epoch * n_recs + i)
-            # Compute average loss
-            print(c)
-            avg_cost += c / n_recs
+                # Run optimization op (backprop), cost op (to get loss value)
+                # and summary nodes
+                _, c, summary = sess.run([apply_grads, loss, merged_summary_op], feed_dict={xFeats: batch_xs, y: batch_ys})
+                #print('batch trained in ', time.time()-tlast, ' seconds, writing to log')
+                tlast = time.time()
+                # Write logs at every iteration
+                summary_writer.add_summary(summary, epoch * n_recs + i)
+                # Compute average loss
+                print(c)
+                avg_cost += c / n_recs
+            print("average cost of epoch is:  ", "{:.9f}".format(avg_cost))
         # Display logs per epoch step
         if (epoch+1) % display_epoch == 0:
             xF = []

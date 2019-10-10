@@ -3,74 +3,39 @@ from __future__ import division, print_function, absolute_import
 
 import tensorflow as tf
 from tensorflow.contrib import rnn
-import tensorflow_hub as hub
 import h5py
 import numpy as np
 #import matplotlib.pyplot as plt
 import os.path
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, isdir, splitext
 import time
 import edflib
 
+foldername = 'C:\\piglet labelled eeg\\'
+folderlist = [join(foldername, f) for f in listdir(foldername) if isdir(join(foldername, f))]
+filelist = []
+for fold in folderlist:
+    fi = [join(fold, f) for f in listdir(fold) if isfile(join(fold, f))]
+    filelist = filelist + fi
 
-classifier_url ="https://tfhub.dev/google/tf2-preview/mobilenet_v2/classification/2" #@param {type:"string"}
+print(filelist)
 
-#foldername = 'C:\\Users\\Tim\\EEG Free NAthan'
-foldername = 'C:\\Users\\Tim\\eegNathanTest'
-#foldername = 'eegDat'
-filelist = [f for f in listdir(foldername) if isfile(join(foldername, f))]
 fs =256
 signal_labels = []
 signal_nsamples = []
-def fileinfo(edf):
-    #print("datarecords_in_file", edf.datarecords_in_file)
-    #print("signals_in_file:", edf.signals_in_file)
+Records = []
+for f in filelist:
+    a = splitext(f)
+    if a[1] == '.mat':
 
-    for ii in range(edf.signals_in_file):
-        signal_labels.append(edf.signal_label(ii))
-        print("signal_label(%d)" % ii, edf.signal_label(ii), end='')
-        print(edf.samples_in_file(ii), edf.samples_in_datarecord(ii), end='')
-        signal_nsamples.append(edf.samples_in_file(ii))
-        print(edf.samplefrequency(ii))
-    return edf.samples_in_file(ii), edf.signals_in_file
-
-
-def readsignals(edf, nPoints, sig1, buf=None):
-    """times in seconds"""
-    nsigs = edf.signals_in_file
-    for ii in range(nsigs):
-        edf.read_digital_signal(ii, 0, nPoints, buf)
-        sig1[:, ii] = buf
-
-#takes the label list, produces examples from it
-def getLeaveOneOut(LabelsLst, DataLst,N):
-    Nrecords = len(DataLst)
-    records = []
-    for k in range(Nrecords-1):
-        name = DataLst[k][1]
-        data = DataLst[k][0]
-
-        annotationNum = int(name.strip(join(foldername, 'eeg')))
-        print(annotationNum)
-        currLabels = LabelsLst[annotationNum]
-        clen = np.shape(currLabels)[0]
-        n_chann = np.shape(data)[1]
-        print(clen)
-        XDat = np.zeros((clen,fs,n_chann))
-        for cnt in range(clen-1):
-            timestep = data[cnt*fs:(cnt+1)*fs][:]
-            XDat[cnt,:,:] = timestep
-
-
-        if k == N:
-            validation = (XDat, currLabels)
-        else:
-            records.append((XDat, currLabels))
-
-
-    return records, validation
-
+        with h5py.File(f) as file:
+            print(file['Records'].keys())
+            Class = file['Records']['ClassNum'].value
+            print(Class)
+            xTFDs = file['Records']['TFDs'][()]
+            xEEG = file['Records']['eeg']
+            xFeatures = file['Records']['features']
 
 print(foldername)
 print(filelist)
@@ -115,24 +80,25 @@ records, validation = getLeaveOneOut(annotations, eegdata, 0);
 
 # Training Parameters
 learning_rate = 0.001
-batch_size = 4000
-dropout = 0.7
+batch_size = 40000
+dropout = 0.8
 
 n_recs = np.shape(records)[0]
 print(n_recs)
-training_epochs = 200
+training_epochs = 3
 display_epoch = 1
 num_hidden = 40
 timesteps = 256
 channels = 21
 
 #dfefine logging paths
+logs_path = 'S:\\UQCCR-Colditz\\Signal Processing File Sharing\\For Elliot\\Tensorflow_logs\\example2\\'
+modelPath = 'S:\\UQCCR-Colditz\\Signal Processing File Sharing\\For Elliot\\Tensorflow\\PigletEEG\\model.ckpt'
+
 
 logs_path = 'C:\\TF\\tf_logs\\'
 modelPath = 'C:\\TF\\Models\\RNNforEEG\\'
 
-logs_path = 'TF\\tf_logs\\'
-modelPath = 'TF\\Models\\RNNforEEG\\'
 # Create the neural network
 def dense_net(x_dict, n_classes, dropout, reuse, is_training):
     # Define a scope for reusing the variables
@@ -141,33 +107,19 @@ def dense_net(x_dict, n_classes, dropout, reuse, is_training):
         print('network layers Features')
         Feats = x_dict['xFeats']
         Feats = tf.transpose(Feats, perm=[0,2,1])
-        #channs = tf.unstack(Feats, 2)
-        stfts = tf.signal.stft(Feats,256,1,256)
-        #stfts = tf.cast(stfts, tf.complex64)
-        stfts = tf.transpose(stfts, [0, 2, 3, 1])
-        stfts = tf.image.per_image_standardization(stfts)
-        tmplayer = tf.layers.conv2d(tf.abs(stfts), 96, 5, activation=tf.nn.relu, data_format='channels_last')
+        channs = tf.unstack(Feats, 2)
+        stfts = tf.signal.stft(channs,64,8,64)
+        stfts = tf.cast(stfts, tf.complex64)
+        tmplayer = tf.layers.conv2d(stfts, 32, 10, activation=tf.nn.relu,data_format='channels_last')
         print(np.shape(tmplayer))
-        tmplayer = tf.layers.conv2d(tmplayer, 256, 1, activation=tf.nn.relu)
-        tmplayer = tf.nn.dropout(tmplayer, keep_prob=dropout)
-        tmplayer = tf.layers.max_pooling2d(tmplayer, 2, 2, padding='same')
-        tmplayer = tf.layers.conv2d(tmplayer, 256, 1, activation=tf.nn.relu)
-        tmplayer = tf.layers.max_pooling2d(tmplayer, 2, 2, padding='same')
-        tmplayer = tf.layers.conv2d(tmplayer, 384, 1, activation=tf.nn.relu)
-        tmplayer = tf.nn.dropout(tmplayer, keep_prob=dropout)
-        tmplayer = tf.layers.conv2d(tmplayer, 384, 1, activation=tf.nn.relu)
-        tmplayer = tf.layers.conv2d(tmplayer, 256, 1, activation=tf.nn.relu)
-        tmplayer = tf.layers.max_pooling2d(tmplayer, 2, 2, padding='same')
-
-        tmplayer = tf.layers.conv2d(tmplayer, 256, 1, activation=tf.nn.relu)
+        tmplayer = tf.layers.conv2d(tmplayer, 32, 10, activation=tf.nn.relu)
         print(np.shape(tmplayer))
-        tmplayer = tf.reshape(tmplayer, [-1,3*4*256])
+        tmplayer = tf.reshape(tmplayer, [-1,3*32])
         # Output layer, class prediction
-        fcl = tf.layers.dense(tmplayer, 3072)
-        fcl = tf.layers.dense(fcl, 3072)
-        fcl = tf.nn.dropout(fcl, keep_prob=dropout)
-        fcl = tf.layers.dense(fcl, 3072)
-        fcl = tf.layers.dense(fcl, 1000)
+        fcl = tf.layers.dense(tmplayer, 500)
+        fcl = tf.layers.dense(fcl, 200)
+        fcl = tf.layers.dense(fcl, 100)
+        fcl = tf.layers.dense(fcl, 40)
         tf.nn.dropout(fcl, keep_prob=dropout)
         out = tf.layers.dense(fcl, 2) #for the 5 classes present in the dataset
 
@@ -244,9 +196,7 @@ with tf.name_scope('SGD'):
 
 with tf.name_scope('Accuracy'):
     # Accuracy
-    yh = tf.where(tf.equal(y, 1))[:, 1]
-    ph = tf.arg_max(prediction, 1)
-    acc, acc_op = tf.metrics.accuracy(labels=yh, predictions=ph)
+    acc,acc_op = tf.metrics.accuracy(labels=y, predictions=prediction)
 # Initialize the variables (i.e. assign their default value)
 init = tf.global_variables_initializer()
 
@@ -324,9 +274,8 @@ with tf.Session() as sess:
     pred = sess.run(prediction, feed_dict={xFeats: validation[0], y: tf.one_hot(validation[1][:, 1], 2).eval()})
     print("Accuracy:", acc)
     print(pred)
-    np.savetxt("accuracyRNNforEEG.csv", acc, delimiter=",")
-    np.savetxt("predictionRNNforEEG.csv", pred, delimiter=",")
+    np.savetxt("foo.csv", pred, delimiter=",")
 
     print("Run the command line:\n" \
-          "--> tensorboard --logdir=C:\\TF\\tf_logs\\ " \
+          "--> tensorboard --logdir=C:\\Users\\Tim\\PycharmProjects\\TensorFlow-Examples\\tensorflow_logs\\example\\ " \
           "\nThen open http://0.0.0.0:6006/ into your web browser")
